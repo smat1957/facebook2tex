@@ -6743,12 +6743,18 @@ https://youtu.be/zdcSSxXSCYU?
 \subsection*{2026年07月03日 22:40}
 \addcontentsline{toc}{subsection}{2026年07月03日 22:40}
 
-（1）Facebookに投稿した記事などの情報をJSON形式でダウンロード
+（1）Facebookに投稿した記事などの情報をJSON形式でダウンロードします
 
-（2）そのJSONファイルを読み込んでTeXファイルを出力するプログラムを作成
+（2）そのJSONファイルを読み込んでTeXファイルを出力するプログラムを作成（ダウンロードしたzipファイルを解凍して、そのフォルダを指定してプログラムを起動します）
 
-（3）そのプログラムを実行して出来上がったTeXからPDFを生成
+\verb|python3 facebook2tex.py  "/Users/mat/Downloads/facebook-matoike-2026\_07\_03-1Oj4v3ed"|
+
+（3）そのプログラムを実行して出来上がったTeXからPDFを生成します
 
 これで、Facebookに依存しない日記帳ができました。
 
-プログラムは例によってChatGPTに指示しつつ作り上げたものです。最近では、ChatGPT無しでプログラムを作ろうとは思はない様になってしまった。できたプログラムはGitHub（）に置いておくことにします。
+プログラムは例によってChatGPTに指示しつつ作り上げたものです。最近では、ChatGPT無しでプログラムを作ろうなどと思えなくなってしまった。できたプログラムはGitHub（ \url{https://github.com/smat1957/facebook2tex} ）に置くことにします。
+
+\begin{center}
+\includegraphics[width=0.88\linewidth]{pictures/2026/07/facebook2tex.png}
+\end{center}
