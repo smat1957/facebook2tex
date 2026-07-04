@@ -1,20 +1,63 @@
 import json
 import argparse
+import shutil
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
-
+import re
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
+
+URL_RE = re.compile(r'https?://[^\s<>"\]\}）)。,、]+')
+
+def escape_url_for_tex(url):
+    url = url.strip()
+    url = url.replace("\\", r"\textbackslash{}")
+    url = url.replace("%", r"\%")
+    url = url.replace("#", r"\#")
+    url = url.replace("{", r"\{")
+    url = url.replace("}", r"\}")
+    return url
+
+def escape_tex_except_url(text):
+    """
+    URL以外だけTeXエスケープする。
+    """
+
+    result = []
+    pos = 0
+
+    for m in URL_RE.finditer(text):
+
+        # URLの前
+        result.append(
+            escape_tex(text[pos:m.start()])
+        )
+
+        # URL本体
+        result.append(
+            r"\url{" + escape_url_for_tex(m.group(0)) + "}"
+        )
+
+        pos = m.end()
+
+    result.append(
+        escape_tex(text[pos:])
+    )
+
+    return "".join(result)
 
 
 def fix_facebook_text(s):
     if not isinstance(s, str):
         return ""
     try:
-        return s.encode("latin1").decode("utf-8")
+        s = s.encode("latin1").decode("utf-8")
     except Exception:
-        return s
+        pass
+
+    s = s.replace("\ufe0f", "")  # Variation Selector-16
+    return s
 
 
 def escape_tex(s):
@@ -40,8 +83,19 @@ def escape_tex(s):
 
 
 def tex_paragraphs(s):
-    s = escape_tex(s).strip()
-    paras = [p.strip() for p in s.split("\n") if p.strip()]
+    s = fix_facebook_text(s).strip()
+
+    paras = []
+
+    for p in s.split("\n"):
+        p = p.strip()
+        if not p:
+            continue
+
+        paras.append(
+            escape_tex_except_url(p)
+        )
+
     return "\n\n".join(paras)
 
 
@@ -122,26 +176,48 @@ def collect_links(post):
     return links
 
 
-def collect_media(post, archive_root, activity_dir):
+def source_path_from_uri(uri, archive_root, activity_dir):
+    if uri.startswith("your_facebook_activity/"):
+        return archive_root / uri
+    return activity_dir / uri
+
+
+def collect_media(post, archive_root, activity_dir, output_dir):
+    """
+    画像を pictures/YYYY/MM/ にコピーし、
+    TeXから参照する相対パスを返す。
+    """
     media_files = []
+
+    ts = post.get("timestamp")
+    if not ts:
+        return media_files
+
+    dt = dt_from_ts(ts)
+    year = f"{dt.year:04d}"
+    month = f"{dt.month:02d}"
+    prefix = dt.strftime("%Y%m%d_%H%M%S")
+
+    dest_dir = output_dir / "pictures" / year / month
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    found_uris = []
 
     def add_uri(uri):
         uri = fix_facebook_text(uri).strip()
         if not uri:
             return
 
-        if Path(uri).suffix.lower() not in IMAGE_EXTS:
+        suffix = Path(uri).suffix.lower()
+        if suffix not in IMAGE_EXTS:
             return
 
-        if uri.startswith("your_facebook_activity/"):
-            full_path = archive_root / uri
-            tex_uri = uri
-        else:
-            full_path = activity_dir / uri
-            tex_uri = uri
+        src = source_path_from_uri(uri, archive_root, activity_dir)
+        if not src.exists():
+            return
 
-        if full_path.exists() and tex_uri not in media_files:
-            media_files.append(tex_uri)
+        if uri not in found_uris:
+            found_uris.append(uri)
 
     def walk(obj):
         if isinstance(obj, dict):
@@ -155,6 +231,22 @@ def collect_media(post, archive_root, activity_dir):
                 walk(x)
 
     walk(post)
+
+    for i, uri in enumerate(found_uris, start=1):
+        src = source_path_from_uri(uri, archive_root, activity_dir)
+        suffix = src.suffix.lower()
+
+        dest_name = f"{prefix}_{i:03d}{suffix}"
+        dest = dest_dir / dest_name
+
+        # 既に同名がある場合は上書きしない。
+        # 同じ投稿を再生成する分には同じ名前になるのでOK。
+        if not dest.exists():
+            shutil.copy2(src, dest)
+
+        tex_path = f"pictures/{year}/{month}/{dest_name}"
+        media_files.append(tex_path)
+
     return media_files
 
 
@@ -228,7 +320,7 @@ def load_comments(archive_root):
     return own_related, other_related
 
 
-def write_preamble(out, archive_root, activity_dir):
+def write_preamble(out):
     out.write(r"""\documentclass[uplatex,openany]{jsbook}
 
 \usepackage[dvipdfmx]{graphicx}
@@ -238,14 +330,7 @@ def write_preamble(out, archive_root, activity_dir):
 \usepackage{url}
 \geometry{margin=25mm}
 
-""")
-
-    out.write(r"\graphicspath{" + "\n")
-    out.write(rf"{{{archive_root.as_posix()}/}}" + "\n")
-    out.write(rf"{{{activity_dir.as_posix()}/}}" + "\n")
-    out.write("}\n\n")
-
-    out.write(r"""\title{Facebook日記}
+\title{Facebook日記}
 \author{}
 \date{}
 
@@ -260,7 +345,39 @@ def write_preamble(out, archive_root, activity_dir):
 """)
 
 
-def write_post(out, post, archive_root, activity_dir):
+def write_media_grid(out, media):
+    """
+    画像を横2枚ずつ並べる。
+    奇数枚の場合、最後の1枚は中央配置。
+    """
+    if not media:
+        return
+
+    out.write(r"\paragraph{写真}" + "\n")
+
+    for i in range(0, len(media), 2):
+        pair = media[i:i + 2]
+
+        out.write(r"\begin{center}" + "\n")
+
+        if len(pair) == 2:
+            for m in pair:
+                out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
+                out.write(r"\centering" + "\n")
+                out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
+                out.write(r"\end{minipage}" + "\n")
+                out.write(r"\hfill" + "\n")
+        else:
+            m = pair[0]
+            out.write(r"\begin{minipage}{0.70\linewidth}" + "\n")
+            out.write(r"\centering" + "\n")
+            out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
+            out.write(r"\end{minipage}" + "\n")
+
+        out.write(r"\end{center}" + "\n\n")
+
+
+def write_post(out, post, archive_root, activity_dir, output_dir):
     ts = post.get("timestamp")
     if not ts:
         return
@@ -270,7 +387,7 @@ def write_post(out, post, archive_root, activity_dir):
 
     texts = collect_texts(post)
     links = collect_links(post)
-    media = collect_media(post, archive_root, activity_dir)
+    media = collect_media(post, archive_root, activity_dir, output_dir)
 
     if not texts and not links and not media:
         return
@@ -283,11 +400,7 @@ def write_post(out, post, archive_root, activity_dir):
         out.write("\n\n")
 
     if media:
-        out.write(r"\paragraph{写真}" + "\n")
-        for m in media:
-            out.write(r"\begin{center}" + "\n")
-            out.write(rf"\includegraphics[width=0.88\linewidth]{{{m}}}" + "\n")
-            out.write(r"\end{center}" + "\n\n")
+        write_media_grid(out, media)
 
     if links:
         out.write(r"\paragraph{リンク}" + "\n")
@@ -333,7 +446,13 @@ def write_year_files(by_year_month, archive_root, activity_dir, output_dir):
                 )
 
                 for post in month_posts:
-                    write_post(out, post, archive_root, activity_dir)
+                    write_post(
+                        out,
+                        post,
+                        archive_root,
+                        activity_dir,
+                        output_dir
+                    )
 
     return years
 
@@ -353,9 +472,9 @@ def write_appendix_files(own_comments, other_comments, output_dir):
             write_comment_record(out, rec)
 
 
-def write_main_tex(output_path, archive_root, activity_dir, years):
+def write_main_tex(output_path, years):
     with output_path.open("w", encoding="utf-8") as out:
-        write_preamble(out, archive_root, activity_dir)
+        write_preamble(out)
 
         for year in years:
             out.write(rf"\input{{year{year}.tex}}" + "\n")
@@ -384,6 +503,7 @@ def main():
 
     output_path = Path(args.output).resolve()
     output_dir = output_path.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     posts_json = find_posts_json(archive_root)
 
@@ -416,8 +536,6 @@ def main():
 
     write_main_tex(
         output_path,
-        archive_root,
-        activity_dir,
         years
     )
 
@@ -426,6 +544,7 @@ def main():
     print(f"他人へのコメント: {len(other_comments)} 件")
     print(f"作成しました: {output_path}")
     print("年別ファイル:", ", ".join(f"year{y}.tex" for y in years))
+    print("画像コピー先: pictures/YYYY/MM/")
     print("付録ファイル: appendix_own_comments.tex, appendix_other_comments.tex")
 
 
