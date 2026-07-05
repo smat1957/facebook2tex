@@ -588,29 +588,57 @@ class FacebookDiaryBuilder:
     def write_subfile_footer(out):
         out.write("\n" + r"\end{document}" + "\n")
 
+    def make_run_path(self, tex_path):
+        return "../" + tex_path
+
     def write_media_grid(self, out, media):
         """画像を横2枚ずつ並べる。"""
         if not media:
             return
+
         out.write(r"\paragraph{写真}" + "\n")
         for i in range(0, len(media), 2):
             pair = media[i:i + 2]
             out.write(r"\begin{center}" + "\n")
             if len(pair) == 2:
                 for index, m in enumerate(pair):
+                    run_path = self.make_run_path(m)
                     out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
                     out.write(r"\centering" + "\n")
+                    #out.write(r"\href{run:" + m + "}{" + "\n")
+                    out.write(
+                        r"\href{run:"
+                        + self.escape_url_for_tex(run_path)
+                        + "}{" + "\n"
+                    )
                     out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
+                    out.write("}\n")
                     out.write(r"\end{minipage}" + "\n")
+                    #out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
+                    #out.write(r"\centering" + "\n")
+                    #out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
+                    #out.write(r"\end{minipage}" + "\n")
                     if index == 0:
                         out.write(r"\hfill" + "\n")
             else:
                 m = pair[0]
-                #out.write(r"\begin{minipage}{0.70\linewidth}" + "\n")
+                run_path = self.make_run_path(m)
                 out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
                 out.write(r"\centering" + "\n")
+                #out.write(r"\href{run:" + m + "}{" + "\n")
+                out.write(
+                    r"\href{run:"
+                    + self.escape_url_for_tex(run_path)
+                    + "}{" + "\n"
+                )
                 out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
+                out.write("}\n")
                 out.write(r"\end{minipage}" + "\n")
+                #out.write(r"\begin{minipage}{0.70\linewidth}" + "\n")
+                #out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
+                #out.write(r"\centering" + "\n")
+                #out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
+                #out.write(r"\end{minipage}" + "\n")
             out.write(r"\end{center}" + "\n\n")
 
     def write_link_image(self, out, img, url=None):
