@@ -605,7 +605,6 @@ class FacebookDiaryBuilder:
                     run_path = self.make_run_path(m)
                     out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
                     out.write(r"\centering" + "\n")
-                    #out.write(r"\href{run:" + m + "}{" + "\n")
                     out.write(
                         r"\href{run:"
                         + self.escape_url_for_tex(run_path)
@@ -614,10 +613,6 @@ class FacebookDiaryBuilder:
                     out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
                     out.write("}\n")
                     out.write(r"\end{minipage}" + "\n")
-                    #out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
-                    #out.write(r"\centering" + "\n")
-                    #out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
-                    #out.write(r"\end{minipage}" + "\n")
                     if index == 0:
                         out.write(r"\hfill" + "\n")
             else:
@@ -625,7 +620,6 @@ class FacebookDiaryBuilder:
                 run_path = self.make_run_path(m)
                 out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
                 out.write(r"\centering" + "\n")
-                #out.write(r"\href{run:" + m + "}{" + "\n")
                 out.write(
                     r"\href{run:"
                     + self.escape_url_for_tex(run_path)
@@ -634,11 +628,6 @@ class FacebookDiaryBuilder:
                 out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
                 out.write("}\n")
                 out.write(r"\end{minipage}" + "\n")
-                #out.write(r"\begin{minipage}{0.70\linewidth}" + "\n")
-                #out.write(r"\begin{minipage}{0.48\linewidth}" + "\n")
-                #out.write(r"\centering" + "\n")
-                #out.write(rf"\includegraphics[width=\linewidth]{{{m}}}" + "\n")
-                #out.write(r"\end{minipage}" + "\n")
             out.write(r"\end{center}" + "\n\n")
 
     def write_link_image(self, out, img, url=None):
@@ -649,7 +638,6 @@ class FacebookDiaryBuilder:
         out.write(r"\begin{center}" + "\n")
         if url:
             out.write(r"\href{" + self.escape_url_for_tex(url) + "}{" + "\n")
-        #out.write(rf"\includegraphics[width=0.9\linewidth]{{{tex_path}}}" + "\n")
         out.write(rf"\includegraphics[width=0.48\linewidth]{{{tex_path}}}" + "\n")
         if url:
             out.write("}\n")
