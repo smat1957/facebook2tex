@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.idea/
+facebook2/facebook_diary.json
+facebook_diary/
