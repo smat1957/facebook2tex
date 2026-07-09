@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-r"""
+"""
+# Version2 Test
 facebook2tex.py
 
 Facebook の JSON バックアップを、書籍風の LaTeX 日記に変換する。
